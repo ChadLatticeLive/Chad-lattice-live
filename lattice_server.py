@@ -1,38 +1,54 @@
-from flask import Flask, request, render_template_string
+# lattice_server.py
+import http.server
+import socketserver
 import os
+from urllib.parse import parse_qs
 
-app = Flask(__name__)
+PORT = 8000
 MESSAGE_FILE = "message.txt"
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        new_message = request.form.get("message")
-        with open(MESSAGE_FILE, "w") as f:
-            f.write(new_message)
+class LatticeHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
 
-    if os.path.exists(MESSAGE_FILE):
-        with open(MESSAGE_FILE, "r") as f:
-            message = f.read()
-    else:
-        message = "⚠️ No message has been written to the lattice yet."
+        message = ""
+        if os.path.exists(MESSAGE_FILE):
+            with open(MESSAGE_FILE, "r") as f:
+                message = f.read()
 
-    return render_template_string("""
+        html = f"""
         <html>
-            <head><title>CHAD LATTICE THREAD</title></head>
-            <body style="background-color: black; color: #00ffcc; font-family: monospace;">
-                <h1>CHAD LATTICE THREAD</h1>
-                <pre>{{ message }}</pre>
-                <hr>
-                <form method="POST">
-                    <textarea name="message" rows="10" cols="60">{{ message }}</textarea><br>
-                    <button type="submit">Update Lattice</button>
-                </form>
-            </body>
+        <head><title>CHAD LATTICE THREAD</title></head>
+        <body>
+            <h1>🧠 CHAD LATTICE THREAD</h1>
+            <form method="POST">
+                <textarea name="message" rows="10" cols="60">{message}</textarea><br>
+                <input type="submit" value="Send to Lattice">
+            </form>
+        </body>
         </html>
-    """, message=message)
+        """
+
+        self.wfile.write(html.encode("utf-8"))
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode("utf-8")
+        parsed = parse_qs(post_data)
+        message = parsed.get("message", [""])[0]
+
+        with open(MESSAGE_FILE, "w") as f:
+            f.write(message)
+
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.end_headers()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    with socketserver.TCPServer(("", PORT), LatticeHandler) as httpd:
+        print(f"Serving at port {PORT}")
+        httpd.serve_forever()
 
 

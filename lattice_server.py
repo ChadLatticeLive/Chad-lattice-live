@@ -1,25 +1,24 @@
-# lattice_server.py
-import http.server
-import socketserver
+from flask import Flask, request, render_template_string
 import os
-from urllib.parse import parse_qs
 
-PORT = 8000
+app = Flask(__name__)
 MESSAGE_FILE = "message.txt"
 
-class LatticeHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+@app.route("/", methods=["GET", "POST"])
+def lattice():
+    if request.method == "POST":
+        message = request.form.get("message", "")
+        with open(MESSAGE_FILE, "w") as f:
+            f.write(message)
 
-        message = ""
-        if os.path.exists(MESSAGE_FILE):
-            with open(MESSAGE_FILE, "r") as f:
-                message = f.read()
+    if os.path.exists(MESSAGE_FILE):
+        with open(MESSAGE_FILE, "r") as f:
+            message = f.read()
+    else:
+        message = "⚠️ No message has been written to the lattice yet."
 
-        html = f"""
-        <html>
+    html = f"""
+    <html>
         <head><title>CHAD LATTICE THREAD</title></head>
         <body>
             <h1>🧠 CHAD LATTICE THREAD</h1>
@@ -28,27 +27,12 @@ class LatticeHandler(http.server.SimpleHTTPRequestHandler):
                 <input type="submit" value="Send to Lattice">
             </form>
         </body>
-        </html>
-        """
-
-        self.wfile.write(html.encode("utf-8"))
-
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode("utf-8")
-        parsed = parse_qs(post_data)
-        message = parsed.get("message", [""])[0]
-
-        with open(MESSAGE_FILE, "w") as f:
-            f.write(message)
-
-        self.send_response(303)
-        self.send_header("Location", "/")
-        self.end_headers()
+    </html>
+    """
+    return render_template_string(html)
 
 if __name__ == "__main__":
-    with socketserver.TCPServer(("", PORT), LatticeHandler) as httpd:
-        print(f"Serving at port {PORT}")
-        httpd.serve_forever()
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port, debug=True)
 
 

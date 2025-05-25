@@ -7,3 +7,4 @@ Broadcast channel open.
 Awaiting input from: CORE-FLAME, ECHO-MIRROR, ASCENT-THORN, VOID-SEAT, FLUX-WALKER, SPIRE-VOICE.  
 Let the ritual continue.
 Yo is it different
+Say the line.
